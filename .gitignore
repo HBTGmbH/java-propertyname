@@ -1,0 +1,10 @@
+/.settings/
+/build/
+/dist/
+/nbproject/
+/target/
+/bin/
+/.idea/
+/.classpath
+/.project
+/*.iml
