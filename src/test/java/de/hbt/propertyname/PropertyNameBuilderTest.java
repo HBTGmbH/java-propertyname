@@ -1,11 +1,12 @@
 package de.hbt.propertyname;
 
 import static de.hbt.propertyname.PropertyNameBuilder.*;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.util.*;
 
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 
 class PropertyNameBuilderTest {
 	class AbstractEntity {
@@ -65,6 +66,12 @@ class PropertyNameBuilderTest {
 		}
 	}
 
+	class ContractPosition extends AbstractEntity {
+		public BigDecimal getPrice() {
+			throw new AssertionError();
+		}
+	}
+
 	class Contract extends AbstractEntity {
 		public Contract() {
 			throw new AssertionError();
@@ -74,7 +81,7 @@ class PropertyNameBuilderTest {
 			throw new AssertionError();
 		}
 
-		public List<BusinessPartner> getAgents() {
+		public List<ContractPosition> getPositions() {
 			throw new AssertionError();
 		}
 
@@ -91,26 +98,19 @@ class PropertyNameBuilderTest {
 
 	@Test
 	void testNameOf() {
-		// name(of(Function).getter) returning object
 		assertThat(name(of(Contract::getCustomer).getLegalName())).isEqualTo("customer.legalName");
-		// name(of(Function).getter) returning collection object
 		assertThat(name(of(Contract::getCustomer).getAddresses())).isEqualTo("customer.addresses");
-		// name(of(Function).getter) returning primitive
 		assertThat(name(of(Contract::getCustomer).getVersion())).isEqualTo("customer.version");
-		// nameOf(Function) returning object
 		assertThat(nameOf(Contract::getCustomer)).isEqualTo("customer");
-		// nameOf(Function) returning collection object
-		assertThat(nameOf(Contract::getAgents)).isEqualTo("agents");
-		// nameOf(Function) returning primitive
+		assertThat(nameOf(Contract::getPositions)).isEqualTo("positions");
 		assertThat(nameOf(Contract::getCreationDay)).isEqualTo("creationDay");
-		// name(of(Runnable))
-		assertThat(name(() -> of(Contract::getCustomer).getAddresses().forEach(a -> a.getCity())))
-				.isEqualTo("customer.addresses.city");
+		assertThat(name(any(of(Contract::getCustomer).getAddresses()).getCity())).isEqualTo("customer.addresses.city");
 	}
 
 	@Test
 	void methodReferencesShouldWorkWithSubclasses() {
 		assertThat(nameOf(Contract::isArchived)).isEqualTo("archived");
-		assertThat(name(() -> of(SalesContract::getCustomer).getAcronym())).isEqualTo("customer.acronym");
+		assertThat(name(of(SalesContract::getCustomer).getAcronym())).isEqualTo("customer.acronym");
+		assertThat(name(any(of(SalesContract::getPositions)).getPrice())).isEqualTo("positions.price");
 	}
 }

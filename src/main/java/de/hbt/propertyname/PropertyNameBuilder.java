@@ -6,7 +6,7 @@ import java.lang.invoke.*;
 import java.lang.reflect.*;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Function;
 
 import org.objectweb.asm.*;
 import org.objectweb.asm.Type;
@@ -15,11 +15,22 @@ import org.objectweb.asm.Type;
  * Generate the name (as a {@link String}) of a class property or sequence of properties in a type-safe and
  * refactoring-safe way.
  * <p>
+ * Examples:
+ * 
+ * <pre>
+ * <code>
+ * assertThat(nameOf(Contract::getCustomer)).isEqualTo("customer");
+ * assertThat(name(of(Contract::getCustomer).getName())).isEqualTo("customer");
+ * assertThat(name(any(of(Contract::getProducts)).getPrice())).isEqualTo("products.price");
+ * </code>
+ * </pre>
+ * <p>
  * See the documentation of the following methods:
  * <ul>
- * <li>{@link #name(Object)}, {@link #name(Runnable)}
+ * <li>{@link #name(Object)}
  * <li>{@link #nameOf(Function)}
  * <li>{@link #of(Function)}
+ * <li>{@link #any(Collection)}
  * </ul>
  */
 public class PropertyNameBuilder {
@@ -285,7 +296,8 @@ public class PropertyNameBuilder {
 			throw new PropertyException("Cannot proxy " + clazz, null);
 		Object proxy = proxies.get(clazz);
 		if (proxy == null) {
-			proxies.put(clazz, proxy = createProxy(clazz));
+			proxy = createProxy(clazz);
+			proxies.put(clazz, proxy);
 		}
 		return (T) proxy;
 	}
@@ -310,29 +322,32 @@ public class PropertyNameBuilder {
 	}
 
 	/**
-	 * To be used in conjunction with {@link #of(Function) of()} like so:
-	 * <code>name(() -&gt; of(Contract::getAgents).forEach(a -&gt; a.getLegalName()))</code>
+	 * To be used in conjunction with {@link #name(Object) name()} and {@link #of(Function) of()} where the last
+	 * navigated property is a collection, like so: <code>name(any(of(Contract::getPositions)).getProduct())</code>
 	 * <p>
-	 * This scheme is used when navigating through collections via {@link Iterable#forEach(Consumer) forEach} which does
-	 * not return a value.
-	 * 
+	 * This method must be used when selecting through collections, wrapping each navigated collection in an
+	 * {@link #any(Collection)} call.
+	 *
+	 * @see #name(Object)
 	 * @see #of(Function)
-	 * 
-	 * @param runnable a {@link Runnable} Lambda method executing the getter calls to return the property names of
-	 * @return the name of the selected properties
+	 *
+	 * @param      <T> type of the collection element
+	 * @param coll the collection property
+	 * @return a proxy for the collection element
 	 */
-	public static String name(Runnable runnable) {
-		runnable.run();
-		return name((Object) null);
+	public static <T> T any(Collection<T> coll) {
+		return coll.iterator().next();
 	}
 
 	/**
 	 * To be used in conjunction with {@link #of(Function) of()} like so:
 	 * <code>name(of(Contract::getCustomer).getLegalName())</code>
 	 * <p>
-	 * This scheme is used when selecting multiple properties in a row.
+	 * This scheme is used when selecting multiple properties in a row. When only selecting a single top-level property,
+	 * {@link #nameOf(Function)} should be used like so: <code>nameOf(Contract::getCustomer)</code>.
 	 * 
 	 * @see #of(Function)
+	 * @see #nameOf(Function)
 	 * 
 	 * @param obj the return value of a getter call to return the property name of
 	 * @return the name of the selected properties
@@ -359,9 +374,6 @@ public class PropertyNameBuilder {
 
 	private static <T> Object createProxy(Class<T> clazz) {
 		clazz = findNonProxyClass(clazz);
-		Object ret = proxies.get(clazz);
-		if (ret != null)
-			return ret;
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 		String superInternalName = clazz.getName().replace('.', '/');
 		String internalClassName = superInternalName + "_$$_FieldNameClass";
@@ -411,7 +423,7 @@ public class PropertyNameBuilder {
 			mv.visitInsn(ACONST_NULL);
 	}
 
-	private static <T> Object defineClassAndInstantiate(Class<T> clazz, ClassWriter cw, String internalClassName) {
+	private static Object defineClassAndInstantiate(Class<?> clazz, ClassWriter cw, String internalClassName) {
 		Class<?> generatedClass = defineClass(clazz.getClassLoader(), clazz, internalClassName, cw.toByteArray());
 		try {
 			return Unsafe_allocateInstance.invokeExact(generatedClass);

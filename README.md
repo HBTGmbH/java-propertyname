@@ -17,6 +17,6 @@
 assertThat(nameOf(Car::getModel)).isEqualTo("model");
 assertThat(name(of(Car::getModel).getName())).isEqualTo("model.name");
 assertThat(name(of(Car::getModel).isSuv())).isEqualTo("model.suv");
-assertThat(name(() -> of(Car::getManufacturer).getModels()
-    .forEach(Model::getName))).isEqualTo("manufacturer.models.name");
+assertThat(name(any(of(Car::getManufacturer).getModels()).getName()))
+    .isEqualTo("manufacturer.models.name");
 ```
