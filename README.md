@@ -1,5 +1,5 @@
 ## Refactoring-safe POJO property names
-[![Build Status](https://travis-ci.org/HBTGmbH/java-propertyname.svg?branch=master)](https://travis-ci.org/HBTGmbH/java-propertyname)
+[![Build Status](https://travis-ci.org/HBTGmbH/java-propertyname.svg?branch=master)](https://travis-ci.org/HBTGmbH/java-propertyname) [![Maven Snapshot](https://img.shields.io/nexus/s/https/oss.sonatype.org/de.hbt.propertyname/propertyname.svg)](https://oss.sonatype.org/content/repositories/snapshots/de/hbt/propertyname/propertyname/)
 
 ```Java
 @lombok.Data class Car {
