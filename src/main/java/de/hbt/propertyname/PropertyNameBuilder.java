@@ -163,12 +163,24 @@ public class PropertyNameBuilder {
 			Method ConstantPool_getSize = constantPoolClass.getDeclaredMethod("getSize");
 			Method ConstantPool_getMethodAt = constantPoolClass.getDeclaredMethod("getMethodAt", int.class);
 			Method ConstantPool_getClassAt = constantPoolClass.getDeclaredMethod("getClassAt", int.class);
-			Field AccessibleObject_override = AccessibleObject.class.getDeclaredField("override");
-			long overrideOffset = (long) Unsafe_objectFieldOffset.invoke(unsafe, AccessibleObject_override);
-			Unsafe_putBoolean.invoke(unsafe, Class_getConstantPool, overrideOffset, true);
-			Unsafe_putBoolean.invoke(unsafe, ConstantPool_getSize, overrideOffset, true);
-			Unsafe_putBoolean.invoke(unsafe, ConstantPool_getMethodAt, overrideOffset, true);
-			Unsafe_putBoolean.invoke(unsafe, ConstantPool_getClassAt, overrideOffset, true);
+			boolean isAtLeastJava12 = Double.valueOf(System.getProperty("java.class.version")) >= 56.0;
+			if (isAtLeastJava12) {
+				try {
+					Class_getConstantPool.setAccessible(true);
+					ConstantPool_getSize.setAccessible(true);
+					ConstantPool_getMethodAt.setAccessible(true);
+					ConstantPool_getClassAt.setAccessible(true);
+				} catch (Exception e) {
+					throw new PropertyException("When run under JDK12, please add the JVM arguments '--add-opens java.base/jdk.internal.reflect=ALL-UNNAMED'", e);
+				}
+			} else {
+				Field AccessibleObject_override = AccessibleObject.class.getDeclaredField("override");
+				long overrideOffset = (long) Unsafe_objectFieldOffset.invoke(unsafe, AccessibleObject_override);
+				Unsafe_putBoolean.invoke(unsafe, Class_getConstantPool, overrideOffset, true);
+				Unsafe_putBoolean.invoke(unsafe, ConstantPool_getSize, overrideOffset, true);
+				Unsafe_putBoolean.invoke(unsafe, ConstantPool_getMethodAt, overrideOffset, true);
+				Unsafe_putBoolean.invoke(unsafe, ConstantPool_getClassAt, overrideOffset, true);
+			}
 			Class_getConstantPoolMH_ = thisLookup.unreflect(Class_getConstantPool);
 			Class_getConstantPoolMH_ = Class_getConstantPoolMH_
 					.asType(Class_getConstantPoolMH_.type().changeReturnType(Object.class));
