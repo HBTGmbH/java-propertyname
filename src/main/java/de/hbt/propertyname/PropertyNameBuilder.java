@@ -389,9 +389,11 @@ public class PropertyNameBuilder {
 	private static <T> Object createProxy(Class<T> clazz) {
 		clazz = findNonProxyClass(clazz);
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-		String superInternalName = clazz.getName().replace('.', '/');
-		String internalClassName = superInternalName + "_$$_FieldNameClass";
-		cw.visit(V1_8, ACC_PUBLIC | ACC_SUPER, internalClassName, null, superInternalName, null);
+		String superTypeInternalName = clazz.getName().replace('.', '/');
+		String superClassInternalName = clazz.isInterface() ? "java/lang/Object" : superTypeInternalName;
+		String internalClassName = superTypeInternalName + "_$$_FieldNameClass";
+		String[] interfaces = clazz.isInterface() ? new String[] {superTypeInternalName} : null;
+		cw.visit(V1_8, ACC_PUBLIC | ACC_SUPER, internalClassName, null, superClassInternalName, interfaces);
 		generateEquals(cw);
 		generateHashCode(cw);
 		generateToString(cw);

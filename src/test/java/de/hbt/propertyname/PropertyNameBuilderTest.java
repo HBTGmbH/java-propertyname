@@ -76,8 +76,16 @@ class PropertyNameBuilderTest {
 		}
 	}
 
+	interface Shipment {
+		Address getDestination();
+	}
+
 	class Contract extends AbstractEntity {
 		public Contract() {
+			throw new AssertionError();
+		}
+
+		public Shipment getShipment() {
 			throw new AssertionError();
 		}
 
@@ -105,7 +113,9 @@ class PropertyNameBuilderTest {
 		assertThat(name(of(Contract::getCustomer).getLegalName())).isEqualTo("customer.legalName");
 		assertThat(name(of(Contract::getCustomer).getAddresses())).isEqualTo("customer.addresses");
 		assertThat(name(of(Contract::getCustomer).getVersion())).isEqualTo("customer.version");
+		assertThat(name(of(Contract::getShipment).getDestination())).isEqualTo("shipment.destination");
 		assertThat(nameOf(Contract::getCustomer)).isEqualTo("customer");
+		assertThat(nameOf(Contract::getShipment)).isEqualTo("shipment");
 		assertThat(nameOf(Contract::getPositions)).isEqualTo("positions");
 		assertThat(nameOf(Contract::getCreationDay)).isEqualTo("creationDay");
 		assertThat(name(any(of(Contract::getCustomer).getAddresses()).getCity())).isEqualTo("customer.addresses.city");
