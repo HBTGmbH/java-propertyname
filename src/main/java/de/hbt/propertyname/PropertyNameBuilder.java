@@ -223,7 +223,8 @@ public class PropertyNameBuilder {
 
 	private static boolean isGetter(Method m) {
 		Class<?> ret = m.getReturnType();
-		return Modifier.isPublic(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())
+		return !Modifier.isFinal(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())
+				&& !Modifier.isPrivate(m.getModifiers())
 				&& (m.getName().startsWith("get") && ret != void.class && ret != Void.class
 						|| (m.getName().startsWith("is")
 								&& (m.getReturnType() == boolean.class || m.getReturnType() == Boolean.class)))
@@ -400,34 +401,38 @@ public class PropertyNameBuilder {
 			generateHashCode(cw);
 			generateToString(cw);
 		}
-		for (Method m : clazz.getMethods()) {
-			if (!isGetter(m))
-				continue;
-			MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, m.getName(), Type.getMethodDescriptor(m), null, null);
-			Type retType = Type.getReturnType(m);
-			mv.visitLdcInsn(propertyName(m));
-			mv.visitMethodInsn(INVOKESTATIC, RT_name, "appendName", "(Ljava/lang/String;)V", false);
-			if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {
-				mv.visitLdcInsn(Type.getType(m.getReturnType()));
-				mv.visitMethodInsn(INVOKESTATIC, RT_name, "proxy", "(Ljava/lang/Class;)Ljava/lang/Object;", false);
-				mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
-			} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
-				Class<?> elementType = collectionElementType(m.getGenericReturnType());
-				Type elemType = Type.getType(elementType);
-				if (canProxy(elementType)) {
-					mv.visitLdcInsn(elemType);
-					String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
-					mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+		Class<?> cl = clazz;
+		while (cl != null && cl != Object.class) {
+			for (Method m : cl.getDeclaredMethods()) {
+				if (!isGetter(m))
+					continue;
+				MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, m.getName(), Type.getMethodDescriptor(m), null, null);
+				Type retType = Type.getReturnType(m);
+				mv.visitLdcInsn(propertyName(m));
+				mv.visitMethodInsn(INVOKESTATIC, RT_name, "appendName", "(Ljava/lang/String;)V", false);
+				if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {
+					mv.visitLdcInsn(Type.getType(m.getReturnType()));
+					mv.visitMethodInsn(INVOKESTATIC, RT_name, "proxy", "(Ljava/lang/Class;)Ljava/lang/Object;", false);
 					mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+				} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
+					Class<?> elementType = collectionElementType(m.getGenericReturnType());
+					Type elemType = Type.getType(elementType);
+					if (canProxy(elementType)) {
+						mv.visitLdcInsn(elemType);
+						String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
+						mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+						mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+					} else {
+						generateDefaultValue(mv, elemType);
+					}
 				} else {
-					generateDefaultValue(mv, elemType);
+					generateDefaultValue(mv, Type.getType(m.getReturnType()));
 				}
-			} else {
-				generateDefaultValue(mv, Type.getType(m.getReturnType()));
+				mv.visitInsn(retType.getOpcode(IRETURN));
+				mv.visitMaxs(-1, -1);
+				mv.visitEnd();
 			}
-			mv.visitInsn(retType.getOpcode(IRETURN));
-			mv.visitMaxs(-1, -1);
-			mv.visitEnd();
+			cl = cl.getSuperclass();
 		}
 		cw.visitEnd();
 		return defineClassAndInstantiate(clazz, cw, internalClassName);

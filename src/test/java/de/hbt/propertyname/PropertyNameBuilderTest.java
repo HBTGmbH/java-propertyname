@@ -10,15 +10,15 @@ import org.junit.jupiter.api.Test;
 
 class PropertyNameBuilderTest {
 	class AbstractEntity {
-		public AbstractEntity() {
+		AbstractEntity() {
 			throw new AssertionError();
 		}
 
-		public long getVersion() {
+		long getVersion() {
 			throw new AssertionError();
 		}
 
-		public boolean isArchived() {
+		boolean isArchived() {
 			throw new AssertionError();
 		}
 
@@ -39,39 +39,43 @@ class PropertyNameBuilderTest {
 	}
 
 	class Address extends AbstractEntity {
-		public Address() {
+		Address() {
 			throw new AssertionError();
 		}
 
-		public String getCity() {
+		String getCity() {
 			throw new AssertionError();
 		}
 
-		public List<Integer> getNumbers() {
+		List<Integer> getNumbers() {
 			throw new AssertionError();
 		}
 	}
 
 	class BusinessPartner extends AbstractEntity {
-		public BusinessPartner() {
+		BusinessPartner() {
 			throw new AssertionError();
 		}
 
-		public String getLegalName() {
+		String getLegalName() {
 			throw new AssertionError();
 		}
 
-		public Set<Address> getAddresses() {
+		Set<Address> getAddresses() {
 			throw new AssertionError();
 		}
 
-		public String getAcronym() {
+		String getAcronym() {
 			throw new AssertionError();
 		}
 	}
 
 	class ContractPosition extends AbstractEntity {
-		public BigDecimal getPrice() {
+		ContractPosition() {
+			throw new AssertionError();
+		}
+
+		BigDecimal getPrice() {
 			throw new AssertionError();
 		}
 	}
@@ -81,29 +85,29 @@ class PropertyNameBuilderTest {
 	}
 
 	class Contract extends AbstractEntity {
-		public Contract() {
+		Contract() {
 			throw new AssertionError();
 		}
 
-		public Shipment getShipment() {
+		Shipment getShipment() {
 			throw new AssertionError();
 		}
 
-		public BusinessPartner getCustomer() {
+		BusinessPartner getCustomer() {
 			throw new AssertionError();
 		}
 
-		public List<ContractPosition> getPositions() {
+		List<ContractPosition> getPositions() {
 			throw new AssertionError();
 		}
 
-		public Date getCreationDay() {
+		Date getCreationDay() {
 			throw new AssertionError();
 		}
 	}
 
 	class SalesContract extends Contract {
-		public SalesContract() {
+		SalesContract() {
 			throw new AssertionError();
 		}
 	}
