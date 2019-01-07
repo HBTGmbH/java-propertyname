@@ -4,7 +4,7 @@ import static org.objectweb.asm.Opcodes.*;
 
 import java.lang.invoke.*;
 import java.lang.reflect.*;
-import java.time.LocalDate;
+import java.time.temporal.*;
 import java.util.*;
 import java.util.function.Function;
 
@@ -232,9 +232,10 @@ public class PropertyNameBuilder {
 
 	private static boolean canProxy(Class<?> clazz) {
 		return !clazz.isArray() && !clazz.isAnnotation() && !clazz.isPrimitive() && String.class != clazz
-				&& !clazz.isEnum() && !LocalDate.class.isAssignableFrom(clazz) && !Date.class.isAssignableFrom(clazz)
+				&& !clazz.isEnum() && !Temporal.class.isAssignableFrom(clazz) && !Date.class.isAssignableFrom(clazz)
 				&& !Number.class.isAssignableFrom(clazz) && !Boolean.class.isAssignableFrom(clazz)
-				&& !Collection.class.isAssignableFrom(clazz) && !Map.class.isAssignableFrom(clazz);
+				&& !Collection.class.isAssignableFrom(clazz) && !Map.class.isAssignableFrom(clazz)
+				&& !Modifier.isFinal(clazz.getModifiers());
 	}
 
 	private static String propertyName(Method m) {
