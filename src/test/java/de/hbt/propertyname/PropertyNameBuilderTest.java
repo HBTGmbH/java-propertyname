@@ -46,6 +46,10 @@ class PropertyNameBuilderTest {
 		public String getCity() {
 			throw new AssertionError();
 		}
+
+		public List<Integer> getNumbers() {
+			throw new AssertionError();
+		}
 	}
 
 	class BusinessPartner extends AbstractEntity {
@@ -105,6 +109,7 @@ class PropertyNameBuilderTest {
 		assertThat(nameOf(Contract::getPositions)).isEqualTo("positions");
 		assertThat(nameOf(Contract::getCreationDay)).isEqualTo("creationDay");
 		assertThat(name(any(of(Contract::getCustomer).getAddresses()).getCity())).isEqualTo("customer.addresses.city");
+		assertThat(name(any(of(Contract::getCustomer).getAddresses()).getNumbers())).isEqualTo("customer.addresses.numbers");
 	}
 
 	@Test

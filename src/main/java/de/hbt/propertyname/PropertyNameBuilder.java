@@ -171,7 +171,9 @@ public class PropertyNameBuilder {
 					ConstantPool_getMethodAt.setAccessible(true);
 					ConstantPool_getClassAt.setAccessible(true);
 				} catch (Exception e) {
-					throw new PropertyException("When run under JDK12, please add the JVM arguments '--add-opens java.base/jdk.internal.reflect=ALL-UNNAMED'", e);
+					throw new PropertyException(
+							"When run under JDK12, please add the JVM arguments '--add-opens java.base/jdk.internal.reflect=ALL-UNNAMED'",
+							e);
 				}
 			} else {
 				Field AccessibleObject_override = AccessibleObject.class.getDeclaredField("override");
@@ -406,10 +408,15 @@ public class PropertyNameBuilder {
 				mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
 			} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
 				Class<?> elementType = collectionElementType(m.getGenericReturnType());
-				mv.visitLdcInsn(Type.getType(elementType));
-				String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
-				mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;", false);
-				mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+				Type elemType = Type.getType(elementType);
+				if (canProxy(elementType)) {
+					mv.visitLdcInsn(elemType);
+					String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
+					mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+					mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+				} else {
+					generateDefaultValue(mv, elemType);
+				}
 			} else {
 				generateDefaultValue(mv, Type.getType(m.getReturnType()));
 			}
