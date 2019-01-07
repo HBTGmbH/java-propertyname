@@ -12,7 +12,7 @@ matrix:
   - os: linux
     jdk: openjdk8
     after_success:
-    - test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" &&
+    - test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" && test -z "$TRAVIS_TAG" &&
       echo $GPG_SECRET_KEYS | base64 --decode | gpg --import &&
       echo $GPG_OWNERTRUST | base64 --decode | gpg --import-ownertrust &&
       ./mvnw clean deploy --settings .travis/settings.xml -Ddeployment -Dmaven.test.skip=true

@@ -215,7 +215,7 @@ public class PropertyNameBuilder {
 			return (Class<T>) ClassLoader_defineClass.invokeExact(cl, name.replace('/', '.'), definition, 0,
 					definition.length);
 		} catch (Throwable e) {
-			throw new RuntimeException("Could not define class in JVM: " + name, e);
+			throw new PropertyException("Could not define class in JVM: " + name, e);
 		}
 	}
 
