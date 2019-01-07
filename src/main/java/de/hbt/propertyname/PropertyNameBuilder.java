@@ -402,12 +402,15 @@ public class PropertyNameBuilder {
 			generateToString(cw);
 		}
 		Class<?> cl = clazz;
+		Set<String> addedGetters = new HashSet<>();
 		while (cl != null && cl != Object.class) {
 			for (Method m : cl.getDeclaredMethods()) {
-				if (!isGetter(m))
-					continue;
-				MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, m.getName(), Type.getMethodDescriptor(m), null, null);
 				Type retType = Type.getReturnType(m);
+				String signature = m.getName() + "()" + retType.getDescriptor();
+				if (!isGetter(m) || addedGetters.contains(signature))
+					continue;
+				addedGetters.add(signature);
+				MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, m.getName(), Type.getMethodDescriptor(m), null, null);
 				mv.visitLdcInsn(propertyName(m));
 				mv.visitMethodInsn(INVOKESTATIC, RT_name, "appendName", "(Ljava/lang/String;)V", false);
 				if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {

@@ -9,12 +9,12 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 
 class PropertyNameBuilderTest {
-	class AbstractEntity {
+	abstract class AbstractEntity<T extends Number> {
 		AbstractEntity() {
 			throw new AssertionError();
 		}
 
-		long getVersion() {
+		T getVersion() {
 			throw new AssertionError();
 		}
 
@@ -38,8 +38,12 @@ class PropertyNameBuilderTest {
 		}
 	}
 
-	class Address extends AbstractEntity {
+	class Address extends AbstractEntity<Byte> {
 		Address() {
+			throw new AssertionError();
+		}
+
+		boolean isArchived() {
 			throw new AssertionError();
 		}
 
@@ -52,7 +56,7 @@ class PropertyNameBuilderTest {
 		}
 	}
 
-	class BusinessPartner extends AbstractEntity {
+	class BusinessPartner extends AbstractEntity<Short> {
 		BusinessPartner() {
 			throw new AssertionError();
 		}
@@ -70,7 +74,7 @@ class PropertyNameBuilderTest {
 		}
 	}
 
-	class ContractPosition extends AbstractEntity {
+	class ContractPosition extends AbstractEntity<Integer> {
 		ContractPosition() {
 			throw new AssertionError();
 		}
@@ -84,8 +88,12 @@ class PropertyNameBuilderTest {
 		Address getDestination();
 	}
 
-	class Contract extends AbstractEntity {
+	class Contract extends AbstractEntity<Long> {
 		Contract() {
+			throw new AssertionError();
+		}
+
+		Long getVersion() {
 			throw new AssertionError();
 		}
 
@@ -118,6 +126,7 @@ class PropertyNameBuilderTest {
 		assertThat(name(of(Contract::getCustomer).getAddresses())).isEqualTo("customer.addresses");
 		assertThat(name(of(Contract::getCustomer).getVersion())).isEqualTo("customer.version");
 		assertThat(name(of(Contract::getShipment).getDestination())).isEqualTo("shipment.destination");
+		assertThat(nameOf(Contract::getVersion)).isEqualTo("version");
 		assertThat(nameOf(Contract::getCustomer)).isEqualTo("customer");
 		assertThat(nameOf(Contract::getShipment)).isEqualTo("shipment");
 		assertThat(nameOf(Contract::getPositions)).isEqualTo("positions");
