@@ -395,9 +395,11 @@ public class PropertyNameBuilder {
 		String internalClassName = superTypeInternalName + "_$$_FieldNameClass";
 		String[] interfaces = clazz.isInterface() ? new String[] {superTypeInternalName} : null;
 		cw.visit(V1_8, ACC_PUBLIC | ACC_SUPER, internalClassName, null, superClassInternalName, interfaces);
-		generateEquals(cw);
-		generateHashCode(cw);
-		generateToString(cw);
+		if (!clazz.isInterface()) {
+			generateEquals(cw);
+			generateHashCode(cw);
+			generateToString(cw);
+		}
 		for (Method m : clazz.getMethods()) {
 			if (!isGetter(m))
 				continue;
