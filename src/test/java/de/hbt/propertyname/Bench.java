@@ -51,7 +51,7 @@ public class Bench {
 
 	@Benchmark
 	public String chain() {
-		return name(of(A::getB));
+		return name(of(A::getB).getA());
 	}
 
 	@Benchmark

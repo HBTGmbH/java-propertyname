@@ -273,16 +273,27 @@ public class PropertyNameBuilder {
 		}
 		Member member = null;
 		int cpSize = constantPoolSize(constantPool);
-		for (int i = cpSize - 1; member == null && i >= 0; i--) {
+		Class<?> mostSpecific = null;
+		for (int i = cpSize - 1; i >= 0; i--) {
 			try {
 				Member mem = (Member) ConstantPool_getMethodAtMH.invokeExact(constantPool, i);
-				if ("valueOf".equals(mem.getName()) || mem.getDeclaringClass().isAssignableFrom(sub))
+				if ("valueOf".equals(mem.getName()) || mem.getDeclaringClass().isAssignableFrom(sub)) {
 					continue;
+				}
+				if (mem instanceof Method) {
+					Method method = (Method) mem;
+					if (method.getParameterCount() == 1) {
+						mostSpecific = method.getParameterTypes()[0];
+					}
+				}
 				member = mem;
+				break;
 			} catch (Throwable t) {
 			}
 		}
-		Class<?> mostSpecific = member.getDeclaringClass();
+		if (mostSpecific == null) {
+			mostSpecific = member.getDeclaringClass();
+		}
 		for (int i = cpSize - 1; i >= 0; i--) {
 			try {
 				Class<?> clazz = (Class<?>) ConstantPool_getClassAtMH.invokeExact(constantPool, i);
