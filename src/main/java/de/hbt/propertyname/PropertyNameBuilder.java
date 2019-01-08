@@ -89,6 +89,7 @@ public class PropertyNameBuilder {
 	private static final String RT_name = Type.getInternalName(RT.class);
 	private static final WeakHashMap<Class<?>, Object> proxies = new WeakHashMap<>();
 	private static final WeakHashMap<Class<?>, Class<?>> resolved = new WeakHashMap<>();
+	private static final WeakHashMap<Function<?, ?>, String> singleNameCache = new WeakHashMap<>();
 	private static final ThreadLocal<String> PROPERTY_NAME = new ThreadLocal<>();
 
 	static {
@@ -381,9 +382,15 @@ public class PropertyNameBuilder {
 	 * @return the name of the selected property
 	 */
 	public static <T> String nameOf(Function<? super T, ?> getter) {
+		String cachedName = singleNameCache.get(getter);
+		if (cachedName != null) {
+			return cachedName;
+		}
 		@SuppressWarnings("unchecked")
 		T t = (T) of(resolve(getter.getClass()));
-		return name(getter.apply(t));
+		String name = name(getter.apply(t));
+		singleNameCache.put(getter, name);
+		return name;
 	}
 
 	private static <T> Object createProxy(Class<T> clazz) {
