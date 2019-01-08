@@ -101,11 +101,10 @@ public class PropertyNameBuilder {
 		Method Unsafe_putBoolean = null;
 		Object unsafe = null;
 		try {
-			Method Lookup_defineClass = MethodHandles.Lookup.class.getDeclaredMethod("defineClass", byte[].class);
-			Lookup_defineClassMH = thisLookup.unreflect(Lookup_defineClass);
-			Method MethodHandles_privateLookupInMethod = MethodHandles.class.getDeclaredMethod("privateLookupIn",
-					Class.class, MethodHandles.Lookup.class);
-			MethodHandles_privateLookupInMH = thisLookup.unreflect(MethodHandles_privateLookupInMethod);
+			Lookup_defineClassMH = thisLookup.findVirtual(MethodHandles.Lookup.class, "defineClass",
+					MethodType.methodType(Class.class, byte[].class));
+			MethodHandles_privateLookupInMH = thisLookup.findStatic(MethodHandles.class, "privateLookupIn",
+					MethodType.methodType(MethodHandles.Lookup.class, Class.class, MethodHandles.Lookup.class));
 		} catch (Exception e) {
 			/*
 			 * No Lookup.defineClass() or MethodHandles.privateLookupIn(). Probably Java 8 here. That's fine.
@@ -117,15 +116,14 @@ public class PropertyNameBuilder {
 			theUnsafeField.setAccessible(true);
 			unsafe = theUnsafeField.get(null);
 			try {
-				Method allocateInstanceMethod = unsafeClass.getDeclaredMethod("allocateInstance", Class.class);
-				MethodHandle mh = thisLookup.unreflect(allocateInstanceMethod);
+				MethodHandle mh = thisLookup.findVirtual(unsafeClass, "allocateInstance",
+						MethodType.methodType(Object.class, Class.class));
 				Unsafe_allocateInstanceMH = mh.asType(mh.type().changeParameterType(0, Object.class)).bindTo(unsafe);
 			} catch (Exception e) {
 				throw new PropertyException("Cannot generate property names", e);
 			}
-			Method defineAnonymousClassMethod = unsafeClass.getDeclaredMethod("defineAnonymousClass", Class.class,
-					byte[].class, Object[].class);
-			MethodHandle mh = thisLookup.unreflect(defineAnonymousClassMethod);
+			MethodHandle mh = thisLookup.findVirtual(unsafeClass, "defineAnonymousClass",
+					MethodType.methodType(Class.class, Class.class, byte[].class, Object[].class));
 			Unsafe_defineAnonymousClassMH = mh.asType(mh.type().changeParameterType(0, Object.class)).bindTo(unsafe);
 			Unsafe_objectFieldOffset = unsafeClass.getDeclaredMethod("objectFieldOffset", Field.class);
 			Unsafe_putBoolean = unsafeClass.getDeclaredMethod("putBoolean", Object.class, long.class, boolean.class);
@@ -137,7 +135,7 @@ public class PropertyNameBuilder {
 				Method defineClassM = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class,
 						int.class, int.class);
 				defineClassM.setAccessible(true);
-				ClassLoader_defineClassMH = MethodHandles.lookup().unreflect(defineClassM);
+				ClassLoader_defineClassMH = thisLookup.unreflect(defineClassM);
 			}
 		} catch (Exception e) {
 			throw new PropertyException("Cannot generate property names", e);
@@ -394,7 +392,7 @@ public class PropertyNameBuilder {
 		String superTypeInternalName = clazz.getName().replace('.', '/');
 		String superClassInternalName = clazz.isInterface() ? "java/lang/Object" : superTypeInternalName;
 		String internalClassName = superTypeInternalName + "_$$_FieldNameClass";
-		String[] interfaces = clazz.isInterface() ? new String[] {superTypeInternalName} : null;
+		String[] interfaces = clazz.isInterface() ? new String[] { superTypeInternalName } : null;
 		cw.visit(V1_8, ACC_PUBLIC | ACC_SUPER, internalClassName, null, superClassInternalName, interfaces);
 		if (!clazz.isInterface()) {
 			generateEquals(cw);
@@ -423,7 +421,8 @@ public class PropertyNameBuilder {
 					if (canProxy(elementType)) {
 						mv.visitLdcInsn(elemType);
 						String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
-						mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+						mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;",
+								false);
 						mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
 					} else {
 						generateDefaultValue(mv, elemType);
