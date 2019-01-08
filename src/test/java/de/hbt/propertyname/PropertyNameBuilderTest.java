@@ -6,7 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.util.*;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.*;
+import org.junit.jupiter.params.provider.*;
 
 class PropertyNameBuilderTest {
 	abstract class AbstractEntity<T extends Number> {
@@ -120,25 +121,29 @@ class PropertyNameBuilderTest {
 		}
 	}
 
-	@Test
-	void testNameOf() {
-		assertThat(name(of(Contract::getCustomer).getLegalName())).isEqualTo("customer.legalName");
-		assertThat(name(of(Contract::getCustomer).getAddresses())).isEqualTo("customer.addresses");
-		assertThat(name(of(Contract::getCustomer).getVersion())).isEqualTo("customer.version");
-		assertThat(name(of(Contract::getShipment).getDestination())).isEqualTo("shipment.destination");
-		assertThat(nameOf(Contract::getVersion)).isEqualTo("version");
-		assertThat(nameOf(Contract::getCustomer)).isEqualTo("customer");
-		assertThat(nameOf(Contract::getShipment)).isEqualTo("shipment");
-		assertThat(nameOf(Contract::getPositions)).isEqualTo("positions");
-		assertThat(nameOf(Contract::getCreationDay)).isEqualTo("creationDay");
-		assertThat(name(any(of(Contract::getCustomer).getAddresses()).getCity())).isEqualTo("customer.addresses.city");
-		assertThat(name(any(of(Contract::getCustomer).getAddresses()).getNumbers())).isEqualTo("customer.addresses.numbers");
+	static Object[][] testSource() {
+		return new Object[][] {
+			{name(of(Contract::getCustomer).getLegalName()), "customer.legalName"},
+			{name(of(Contract::getCustomer).getAddresses()), "customer.addresses"},
+			{name(of(Contract::getCustomer).getVersion()), "customer.version"},
+			{name(of(Contract::getShipment).getDestination()), "shipment.destination"},
+			{nameOf(Contract::getVersion), "version"},
+			{nameOf(Contract::getCustomer), "customer"},
+			{nameOf(Contract::getShipment), "shipment"},
+			{nameOf(Contract::getPositions), "positions"},
+			{nameOf(Contract::getCreationDay), "creationDay"},
+			{name(any(of(Contract::getCustomer).getAddresses()).getCity()), "customer.addresses.city"},
+			{name(any(of(Contract::getCustomer).getAddresses()).getNumbers()), "customer.addresses.numbers"},
+			{nameOf(Contract::isArchived), "archived"},
+			{name(of(SalesContract::getCustomer).getAcronym()), "customer.acronym"},
+			{name(any(of(SalesContract::getPositions)).getPrice()), "positions.price"}
+		};
 	}
 
-	@Test
-	void methodReferencesShouldWorkWithSubclasses() {
-		assertThat(nameOf(Contract::isArchived)).isEqualTo("archived");
-		assertThat(name(of(SalesContract::getCustomer).getAcronym())).isEqualTo("customer.acronym");
-		assertThat(name(any(of(SalesContract::getPositions)).getPrice())).isEqualTo("positions.price");
+	@ParameterizedTest
+	@MethodSource("testSource")
+	void testNameOf(String actual, String expected) {
+		assertThat(actual).isEqualTo(expected);
 	}
+
 }
