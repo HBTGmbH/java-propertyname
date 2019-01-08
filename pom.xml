@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.hbt.propertyname</groupId>
 	<artifactId>propertyname</artifactId>
-	<version>1.0.1-SNAPSHOT</version>
+	<version>1.0.1</version>
 	<packaging>jar</packaging>
 	<name>Refactoring-safe POJO Property Names</name>
 	<description>Refactoring-safe POJO Property Names</description>
