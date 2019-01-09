@@ -406,7 +406,7 @@ public class PropertyNameBuilder {
 
 	private static <T> Object createProxy(Class<T> clazz) {
 		clazz = findNonProxyClass(clazz);
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		String superTypeInternalName = clazz.getName().replace('.', '/');
 		String superClassInternalName = clazz.isInterface() ? "java/lang/Object" : superTypeInternalName;
 		String internalClassName = superTypeInternalName + "_$$_FieldNameClass";
@@ -419,6 +419,7 @@ public class PropertyNameBuilder {
 		}
 		Class<?> cl = clazz;
 		Set<String> addedGetters = new HashSet<>();
+		int fieldNameCounter = 0;
 		while (cl != null && cl != Object.class) {
 			for (Method m : cl.getDeclaredMethods()) {
 				Type retType = Type.getReturnType(m);
@@ -430,18 +431,24 @@ public class PropertyNameBuilder {
 				mv.visitLdcInsn(propertyName(m));
 				mv.visitMethodInsn(INVOKESTATIC, RT_name, "appendName", "(Ljava/lang/String;)V", false);
 				if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {
+					String fieldName = "$" + (fieldNameCounter++);
+					Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
 					mv.visitLdcInsn(Type.getType(m.getReturnType()));
 					mv.visitMethodInsn(INVOKESTATIC, RT_name, "proxy", "(Ljava/lang/Class;)Ljava/lang/Object;", false);
 					mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+					writeCacheField(internalClassName, m, mv, fieldName, notNull);
 				} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
 					Class<?> elementType = collectionElementType(m.getGenericReturnType());
 					Type elemType = Type.getType(elementType);
 					if (canProxy(elementType)) {
+						String fieldName = "$" + (fieldNameCounter++);
+						Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
 						mv.visitLdcInsn(elemType);
 						String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
 						mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;",
 								false);
 						mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+						writeCacheField(internalClassName, m, mv, fieldName, notNull);
 					} else {
 						generateDefaultValue(mv, elemType);
 					}
@@ -456,6 +463,26 @@ public class PropertyNameBuilder {
 		}
 		cw.visitEnd();
 		return defineClassAndInstantiate(clazz, cw, internalClassName);
+	}
+
+	private static Label readCacheField(ClassWriter cw, String internalClassName, Method m, MethodVisitor mv, String fieldName) {
+		Label notNull = new Label();
+		cw.visitField(ACC_PRIVATE, fieldName, Type.getDescriptor(m.getReturnType()), null, null);
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitFieldInsn(GETFIELD, internalClassName, fieldName, Type.getDescriptor(m.getReturnType()));
+		mv.visitInsn(DUP);
+		mv.visitJumpInsn(IFNONNULL, notNull);
+		mv.visitInsn(POP);
+		return notNull;
+	}
+
+	private static void writeCacheField(String internalClassName, Method m, MethodVisitor mv, String fieldName, Label notNull) {
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitInsn(SWAP);
+		mv.visitFieldInsn(PUTFIELD, internalClassName, fieldName, Type.getDescriptor(m.getReturnType()));
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitFieldInsn(GETFIELD, internalClassName, fieldName, Type.getDescriptor(m.getReturnType()));
+		mv.visitLabel(notNull);
 	}
 
 	private static void generateDefaultValue(MethodVisitor mv, Type type) {
