@@ -121,7 +121,7 @@ public class PropertyNameBuilder {
 						MethodType.methodType(Object.class, Class.class));
 				Unsafe_allocateInstanceMH = mh.asType(mh.type().changeParameterType(0, Object.class)).bindTo(unsafe);
 			} catch (Exception e) {
-				throw new PropertyException("Cannot generate property names", e);
+				throw new PropertyNameException("Cannot generate property names", e);
 			}
 			MethodHandle mh = thisLookup.findVirtual(unsafeClass, "defineAnonymousClass",
 					MethodType.methodType(Class.class, Class.class, byte[].class, Object[].class));
@@ -129,7 +129,7 @@ public class PropertyNameBuilder {
 			Unsafe_objectFieldOffset = unsafeClass.getDeclaredMethod("objectFieldOffset", Field.class);
 			Unsafe_putBoolean = unsafeClass.getDeclaredMethod("putBoolean", Object.class, long.class, boolean.class);
 		} catch (Exception e) {
-			throw new PropertyException("Cannot generate property names", e);
+			throw new PropertyNameException("Cannot generate property names", e);
 		}
 		try {
 			if (Lookup_defineClassMH == null) {
@@ -139,7 +139,7 @@ public class PropertyNameBuilder {
 				ClassLoader_defineClassMH = thisLookup.unreflect(defineClassM);
 			}
 		} catch (Exception e) {
-			throw new PropertyException("Cannot generate property names", e);
+			throw new PropertyNameException("Cannot generate property names", e);
 		}
 		Unsafe_defineAnonymousClass = Unsafe_defineAnonymousClassMH;
 		ClassLoader_defineClass = ClassLoader_defineClassMH;
@@ -170,7 +170,7 @@ public class PropertyNameBuilder {
 					ConstantPool_getMethodAt.setAccessible(true);
 					ConstantPool_getClassAt.setAccessible(true);
 				} catch (Exception e) {
-					throw new PropertyException(
+					throw new PropertyNameException(
 							"When run under JDK12, please add the JVM arguments '--add-opens java.base/jdk.internal.reflect=ALL-UNNAMED'",
 							e);
 				}
@@ -195,7 +195,7 @@ public class PropertyNameBuilder {
 			ConstantPool_getClassAtMH_ = ConstantPool_getClassAtMH_
 					.asType(ConstantPool_getClassAtMH_.type().changeParameterType(0, Object.class));
 		} catch (Throwable e) {
-			throw new PropertyException("Cannot generate property names", e);
+			throw new PropertyNameException("Cannot generate property names", e);
 		}
 		Class_getConstantPoolMH = Class_getConstantPoolMH_;
 		ConstantPool_getSizeMH = ConstantPool_getSizeMH_;
@@ -216,7 +216,7 @@ public class PropertyNameBuilder {
 			return (Class<T>) ClassLoader_defineClass.invokeExact(cl, name.replace('/', '.'), definition, 0,
 					definition.length);
 		} catch (Throwable e) {
-			throw new PropertyException("Could not define class in JVM: " + name, e);
+			throw new PropertyNameException("Could not define class in JVM: " + name, e);
 		}
 	}
 
@@ -258,7 +258,7 @@ public class PropertyNameBuilder {
 			ParameterizedType pt = (ParameterizedType) t;
 			return (Class<?>) pt.getActualTypeArguments()[0];
 		}
-		throw new PropertyException("Unsupported collection element type: " + t, null);
+		throw new PropertyNameException("Unsupported collection element type: " + t, null);
 	}
 
 	private static <T, S extends T> Class<?> resolve(Class<S> sub) {
@@ -269,7 +269,7 @@ public class PropertyNameBuilder {
 		try {
 			constantPool = Class_getConstantPoolMH.invokeExact(sub);
 		} catch (Throwable e) {
-			throw new PropertyException("Could not get ConstantPool of " + sub, e);
+			throw new PropertyNameException("Could not get ConstantPool of " + sub, e);
 		}
 		Member member = null;
 		int cpSize = constantPoolSize(constantPool);
@@ -312,14 +312,14 @@ public class PropertyNameBuilder {
 		try {
 			return (int) ConstantPool_getSizeMH.invokeExact(constantPool);
 		} catch (Throwable t) {
-			throw new PropertyException("Cannot get ConstantPool size of " + constantPool, t);
+			throw new PropertyNameException("Cannot get ConstantPool size of " + constantPool, t);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	private static <T> T of(Class<T> clazz) {
 		if (!canProxy(clazz))
-			throw new PropertyException("Cannot proxy " + clazz, null);
+			throw new PropertyNameException("Cannot proxy " + clazz, null);
 		Object proxy = proxies.get(clazz);
 		if (proxy == null) {
 			proxy = createProxy(clazz);
@@ -504,7 +504,7 @@ public class PropertyNameBuilder {
 		try {
 			return Unsafe_allocateInstance.invokeExact(generatedClass);
 		} catch (Throwable e) {
-			throw new PropertyException("Could not instantiate propxy for " + generatedClass, e);
+			throw new PropertyNameException("Could not instantiate propxy for " + generatedClass, e);
 		}
 	}
 
