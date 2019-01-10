@@ -433,9 +433,9 @@ public class PropertyNameBuilder {
 				if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {
 					String fieldName = "$" + (fieldNameCounter++);
 					Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
-					mv.visitLdcInsn(Type.getType(m.getReturnType()));
+					mv.visitLdcInsn(retType);
 					mv.visitMethodInsn(INVOKESTATIC, RT_name, "proxy", "(Ljava/lang/Class;)Ljava/lang/Object;", false);
-					mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+					mv.visitTypeInsn(CHECKCAST, retType.getInternalName());
 					writeCacheField(internalClassName, m, mv, fieldName, notNull);
 				} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
 					Class<?> elementType = collectionElementType(m.getGenericReturnType());
@@ -447,13 +447,13 @@ public class PropertyNameBuilder {
 						String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
 						mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;",
 								false);
-						mv.visitTypeInsn(CHECKCAST, Type.getInternalName(m.getReturnType()));
+						mv.visitTypeInsn(CHECKCAST, retType.getInternalName());
 						writeCacheField(internalClassName, m, mv, fieldName, notNull);
 					} else {
 						generateDefaultValue(mv, elemType);
 					}
 				} else {
-					generateDefaultValue(mv, Type.getType(m.getReturnType()));
+					generateDefaultValue(mv, retType);
 				}
 				mv.visitInsn(retType.getOpcode(IRETURN));
 				mv.visitMaxs(-1, -1);
