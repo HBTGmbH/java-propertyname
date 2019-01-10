@@ -277,7 +277,7 @@ public class PropertyNameBuilder {
 		for (int i = cpSize - 1; i >= 0; i--) {
 			try {
 				Member mem = (Member) ConstantPool_getMethodAtMH.invokeExact(constantPool, i);
-				if ("valueOf".equals(mem.getName()) || mem.getDeclaringClass().isAssignableFrom(sub)) {
+				if ("valueOf".equals(mem.getName())) {
 					continue;
 				}
 				if (mem instanceof Method) {
@@ -286,12 +286,16 @@ public class PropertyNameBuilder {
 						mostSpecific = method.getParameterTypes()[0];
 					}
 				}
-				member = mem;
-				break;
+				if (member == null || member.getDeclaringClass().isAssignableFrom(mem.getDeclaringClass())) {
+					member = mem;
+				}
 			} catch (Throwable t) {
 			}
 		}
 		if (mostSpecific == null) {
+			if (member.getDeclaringClass().equals(Object.class)) {
+				throw new PropertyNameException("Calling methods declared by Object is unsupported", null);
+			}
 			mostSpecific = member.getDeclaringClass();
 		}
 		for (int i = cpSize - 1; i >= 0; i--) {
