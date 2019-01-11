@@ -72,6 +72,10 @@ public class PropertyNameBuilder {
 		public static int Object_hashCode(Object o) {
 			return System.identityHashCode(o);
 		}
+
+		public static Exception noGetterMethodCalledException(String name) {
+			return new UnsupportedOperationException("Non-getter method called: " + name);
+		}
 	}
 
 	private static final MethodHandle Unsafe_defineAnonymousClass;
@@ -222,12 +226,18 @@ public class PropertyNameBuilder {
 
 	private static boolean isGetter(Method m) {
 		Class<?> ret = m.getReturnType();
-		return !Modifier.isFinal(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())
-				&& !Modifier.isPrivate(m.getModifiers())
-				&& (m.getName().startsWith("get") && ret != void.class && ret != Void.class
+		return (m.getName().startsWith("get") && ret != void.class && ret != Void.class
 						|| (m.getName().startsWith("is")
 								&& (m.getReturnType() == boolean.class || m.getReturnType() == Boolean.class)))
 				&& m.getParameterCount() == 0 && m.getDeclaringClass() != Object.class;
+	}
+
+	private static boolean canOverwrite(Method m) {
+		return !Modifier.isFinal(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())
+				&& !Modifier.isPrivate(m.getModifiers()) && m.getDeclaringClass() != Object.class
+				&& (!m.getName().equals("equals") || m.getParameterCount() != 1 || m.getParameterTypes()[0] != Object.class)
+				&& (!m.getName().equals("toString") || m.getParameterCount() != 0)
+				&& (!m.getName().equals("hashCode") || m.getParameterCount() != 0);
 	}
 
 	private static boolean canProxy(Class<?> clazz) {
@@ -274,6 +284,7 @@ public class PropertyNameBuilder {
 		Member member = null;
 		int cpSize = constantPoolSize(constantPool);
 		Class<?> mostSpecific = null;
+		Class<?> generatedMethodDeclaringClass = null;
 		for (int i = cpSize - 1; i >= 0; i--) {
 			try {
 				Member mem = (Member) ConstantPool_getMethodAtMH.invokeExact(constantPool, i);
@@ -282,6 +293,9 @@ public class PropertyNameBuilder {
 				}
 				if (mem instanceof Method) {
 					Method method = (Method) mem;
+					if (method.getName().startsWith("lambda$")) {
+						generatedMethodDeclaringClass = method.getDeclaringClass();
+					}
 					if (method.getParameterCount() == 1) {
 						mostSpecific = method.getParameterTypes()[0];
 					}
@@ -301,7 +315,7 @@ public class PropertyNameBuilder {
 		for (int i = cpSize - 1; i >= 0; i--) {
 			try {
 				Class<?> clazz = (Class<?>) ConstantPool_getClassAtMH.invokeExact(constantPool, i);
-				if (mostSpecific.isAssignableFrom(clazz) && !mostSpecific.equals(clazz)) {
+				if (!clazz.equals(generatedMethodDeclaringClass) && mostSpecific.isAssignableFrom(clazz) && !mostSpecific.equals(clazz)) {
 					mostSpecific = clazz;
 					break;
 				}
@@ -428,38 +442,25 @@ public class PropertyNameBuilder {
 			for (Method m : cl.getDeclaredMethods()) {
 				Type retType = Type.getReturnType(m);
 				String signature = m.getName() + "()" + retType.getDescriptor();
-				if (!isGetter(m) || addedGetters.contains(signature))
+				if (!canOverwrite(m) || addedGetters.contains(signature))
 					continue;
-				addedGetters.add(signature);
 				MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, m.getName(), Type.getMethodDescriptor(m), null, null);
-				mv.visitLdcInsn(propertyName(m));
-				mv.visitMethodInsn(INVOKESTATIC, RT_name, "appendName", "(Ljava/lang/String;)V", false);
-				if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {
-					String fieldName = "$" + (fieldNameCounter++);
-					Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
-					mv.visitLdcInsn(retType);
-					mv.visitMethodInsn(INVOKESTATIC, RT_name, "proxy", "(Ljava/lang/Class;)Ljava/lang/Object;", false);
-					mv.visitTypeInsn(CHECKCAST, retType.getInternalName());
-					writeCacheField(internalClassName, m, mv, fieldName, notNull);
-				} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
-					Class<?> elementType = collectionElementType(m.getGenericReturnType());
-					Type elemType = Type.getType(elementType);
-					if (canProxy(elementType)) {
-						String fieldName = "$" + (fieldNameCounter++);
-						Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
-						mv.visitLdcInsn(elemType);
-						String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
-						mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;",
-								false);
-						mv.visitTypeInsn(CHECKCAST, retType.getInternalName());
-						writeCacheField(internalClassName, m, mv, fieldName, notNull);
+				boolean isGetter = isGetter(m);
+				if (isGetter) {
+					addedGetters.add(signature);
+					mv.visitLdcInsn(propertyName(m));
+					mv.visitMethodInsn(INVOKESTATIC, RT_name, "appendName", "(Ljava/lang/String;)V", false);
+					if (retType.getSort() == Type.OBJECT && canProxy(m.getReturnType())) {
+						fieldNameCounter = generateNonCollectionCode(cw, internalClassName, fieldNameCounter, m, retType, mv);
+					} else if (Collection.class.isAssignableFrom(m.getReturnType())) {
+						fieldNameCounter = generateCollectionCode(cw, internalClassName, fieldNameCounter, m, retType, mv);
 					} else {
-						generateDefaultValue(mv, elemType);
+						generateDefaultValue(mv, retType);
 					}
+					mv.visitInsn(retType.getOpcode(IRETURN));
 				} else {
-					generateDefaultValue(mv, retType);
+					generateNonGetterCode(m, mv);
 				}
-				mv.visitInsn(retType.getOpcode(IRETURN));
 				mv.visitMaxs(-1, -1);
 				mv.visitEnd();
 			}
@@ -467,6 +468,40 @@ public class PropertyNameBuilder {
 		}
 		cw.visitEnd();
 		return defineClassAndInstantiate(clazz, cw, internalClassName);
+	}
+
+	private static void generateNonGetterCode(Method m, MethodVisitor mv) {
+		mv.visitLdcInsn(m.getName());
+		mv.visitMethodInsn(INVOKESTATIC, RT_name, "noGetterMethodCalledException", "(Ljava/lang/String;)Ljava/lang/Exception;", false);
+		mv.visitInsn(ATHROW);
+	}
+
+	private static int generateCollectionCode(ClassWriter cw, String internalClassName, int fieldNameCounter, Method m, Type retType, MethodVisitor mv) {
+		Class<?> elementType = collectionElementType(m.getGenericReturnType());
+		Type elemType = Type.getType(elementType);
+		if (canProxy(elementType)) {
+			String fieldName = "$" + (fieldNameCounter++);
+			Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
+			mv.visitLdcInsn(elemType);
+			String method = Set.class.isAssignableFrom(m.getReturnType()) ? "newSet" : "newList";
+			mv.visitMethodInsn(INVOKESTATIC, RT_name, method, "(Ljava/lang/Class;)Ljava/lang/Object;",
+					false);
+			mv.visitTypeInsn(CHECKCAST, retType.getInternalName());
+			writeCacheField(internalClassName, m, mv, fieldName, notNull);
+		} else {
+			generateDefaultValue(mv, elemType);
+		}
+		return fieldNameCounter;
+	}
+
+	private static int generateNonCollectionCode(ClassWriter cw, String internalClassName, int fieldNameCounter, Method m, Type retType, MethodVisitor mv) {
+		String fieldName = "$" + (fieldNameCounter++);
+		Label notNull = readCacheField(cw, internalClassName, m, mv, fieldName);
+		mv.visitLdcInsn(retType);
+		mv.visitMethodInsn(INVOKESTATIC, RT_name, "proxy", "(Ljava/lang/Class;)Ljava/lang/Object;", false);
+		mv.visitTypeInsn(CHECKCAST, retType.getInternalName());
+		writeCacheField(internalClassName, m, mv, fieldName, notNull);
+		return fieldNameCounter;
 	}
 
 	private static Label readCacheField(ClassWriter cw, String internalClassName, Method m, MethodVisitor mv, String fieldName) {

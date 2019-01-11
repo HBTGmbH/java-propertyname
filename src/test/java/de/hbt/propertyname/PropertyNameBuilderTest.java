@@ -120,8 +120,13 @@ class PropertyNameBuilderTest {
 		SalesContract() {
 			throw new AssertionError();
 		}
+
 		String nonGetterMethod() {
-			return "";
+			throw new AssertionError();
+		}
+
+		private String getPrivateMember() {
+			throw new AssertionError("Private methods not supported");
 		}
 	}
 
@@ -156,13 +161,23 @@ class PropertyNameBuilderTest {
 
 	@Test
 	void methodOnObjectThrows() {
-		assertThatExceptionOfType(PropertyNameException.class).isThrownBy(() -> nameOf(Object::getClass))
+		assertThatExceptionOfType(PropertyNameException.class)
+				.isThrownBy(() -> nameOf(Object::getClass))
 				.withMessage("Calling methods declared by Object is unsupported");
 	}
 
 	@Test
 	void callingNonGetterMethodReturnsNull() {
-		assertThat(nameOf(SalesContract::nonGetterMethod)).isNull();
+		assertThatExceptionOfType(UnsupportedOperationException.class)
+				.isThrownBy(() -> nameOf(SalesContract::nonGetterMethod))
+				.withMessage("Non-getter method called: nonGetterMethod");
+	}
+
+	@Test
+	void callingPrivateMethodReturnsNull() {
+		assertThatExceptionOfType(AssertionError.class)
+				.isThrownBy(() -> nameOf(SalesContract::getPrivateMember))
+				.withMessage("Private methods not supported");
 	}
 
 }
