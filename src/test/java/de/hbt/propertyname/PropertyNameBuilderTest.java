@@ -1,11 +1,12 @@
 package de.hbt.propertyname;
 
 import static de.hbt.propertyname.PropertyNameBuilder.*;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.util.*;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.*;
 import org.junit.jupiter.params.provider.*;
 
@@ -119,6 +120,9 @@ class PropertyNameBuilderTest {
 		SalesContract() {
 			throw new AssertionError();
 		}
+		String nonGetterMethod() {
+			return "";
+		}
 	}
 
 	static Object[][] testSource() {
@@ -148,6 +152,17 @@ class PropertyNameBuilderTest {
 	@MethodSource("testSource")
 	void testNameOf(String actual, String expected) {
 		assertThat(actual).isEqualTo(expected);
+	}
+
+	@Test
+	void methodOnObjectThrows() {
+		assertThatExceptionOfType(PropertyNameException.class).isThrownBy(() -> nameOf(Object::getClass))
+				.withMessage("Calling methods declared by Object is unsupported");
+	}
+
+	@Test
+	void callingNonGetterMethodReturnsNull() {
+		assertThat(nameOf(SalesContract::nonGetterMethod)).isNull();
 	}
 
 }
