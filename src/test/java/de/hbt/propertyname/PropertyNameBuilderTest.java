@@ -167,14 +167,14 @@ class PropertyNameBuilderTest {
 	}
 
 	@Test
-	void callingNonGetterMethodReturnsNull() {
+	void callingNonGetterMethodThrowsUOE() {
 		assertThatExceptionOfType(UnsupportedOperationException.class)
 				.isThrownBy(() -> nameOf(SalesContract::nonGetterMethod))
 				.withMessage("Non-getter method called: nonGetterMethod");
 	}
 
 	@Test
-	void callingPrivateMethodReturnsNull() {
+	void callingPrivateMethodsWillNotBeIntercepted() {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> nameOf(SalesContract::getPrivateMember))
 				.withMessage("Private methods not supported");
