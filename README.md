@@ -14,6 +14,11 @@
   String name;
 }
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static de.hbt.propertyname.PropertyNameBuilder.nameOf;
+import static de.hbt.propertyname.PropertyNameBuilder.of;
+import static de.hbt.propertyname.PropertyNameBuilder.any;
+
 assertThat(nameOf(Car::getModel)).isEqualTo("model");
 assertThat(name(of(Car::getModel).getName())).isEqualTo("model.name");
 assertThat(name(of(Car::getModel).isSuv())).isEqualTo("model.suv");
