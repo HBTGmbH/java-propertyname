@@ -128,6 +128,16 @@ class PropertyNameBuilderTest {
 		private String getPrivateMember() {
 			throw new AssertionError("Private methods not supported");
 		}
+
+		final int getFinalA() {
+			throw new AssertionError();
+		}
+	}
+
+	final class FinalContract extends Contract {
+		int getSomeProperty() {
+			throw new AssertionError();
+		}
 	}
 
 	static Object[][] testSource() {
@@ -160,10 +170,27 @@ class PropertyNameBuilderTest {
 	}
 
 	@Test
+	void callingMethodsOnFinalClassThrows() {
+		assertThatExceptionOfType(PropertyNameException.class)
+				.isThrownBy(() -> nameOf(FinalContract::getSomeProperty))
+				.withMessage("Final classes are unsupported: " +
+						"de.hbt.propertyname.PropertyNameBuilderTest$FinalContract");
+	}
+
+	@Test
+	void callingFinalMethodsThrows() {
+		assertThatExceptionOfType(PropertyNameException.class)
+				.isThrownBy(() -> nameOf(SalesContract::getFinalA))
+				.withMessage("Final methods are unsupported: " +
+						"final int de.hbt.propertyname.PropertyNameBuilderTest$SalesContract.getFinalA()");
+	}
+
+	@Test
 	void methodOnObjectThrows() {
 		assertThatExceptionOfType(PropertyNameException.class)
 				.isThrownBy(() -> nameOf(Object::getClass))
-				.withMessage("Calling methods declared by Object is unsupported");
+				.withMessage("Methods declared by Object are unsupported: " +
+						"public java.lang.Object()");
 	}
 
 	@Test

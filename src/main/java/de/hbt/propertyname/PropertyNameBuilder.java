@@ -308,7 +308,9 @@ public class PropertyNameBuilder {
 		}
 		if (mostSpecific == null) {
 			if (member.getDeclaringClass().equals(Object.class)) {
-				throw new PropertyNameException("Calling methods declared by Object is unsupported", null);
+				throw new PropertyNameException("Methods declared by Object are unsupported: " + member, null);
+			} else if (Modifier.isFinal(member.getModifiers())) {
+				throw new PropertyNameException("Final methods are unsupported: " + member, null);
 			}
 			mostSpecific = member.getDeclaringClass();
 		}
@@ -321,6 +323,9 @@ public class PropertyNameBuilder {
 				}
 			} catch (Throwable t) {
 			}
+		}
+		if (Modifier.isFinal(mostSpecific.getModifiers())) {
+			throw new PropertyNameException("Final classes are unsupported: " + mostSpecific.getName(), null);
 		}
 		resolved.put(sub, mostSpecific);
 		return mostSpecific;
